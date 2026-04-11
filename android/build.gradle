@@ -1,0 +1,33 @@
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        // Force Kotlin 2.1.0 on the classpath so all subprojects compile
+        // consistently (Flutter's own Gradle plugin pulls in 1.9.x otherwise)
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.0"
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+subprojects {
+    afterEvaluate {
+        if (it.hasProperty('android')) {
+            def android = it.properties['android']
+            // Add missing namespace for plugins that don't declare one
+            try {
+                if (android.namespace == null) {
+                    android.namespace = it.group ?: it.name
+                }
+            } catch (ignored) {}
+        }
+    }
+}
+

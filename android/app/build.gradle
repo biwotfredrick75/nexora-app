@@ -1,0 +1,35 @@
+plugins {
+    id "com.android.application"
+    id "org.jetbrains.kotlin.android"
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+android {
+    namespace "ke.co.wakulima.app"
+    compileSdkVersion 35
+    ndkVersion "26.3.11579264"
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
+    defaultConfig {
+        applicationId "ke.co.wakulima.app"
+        minSdkVersion 23
+        targetSdkVersion 34
+        multiDexEnabled true
+        versionCode flutter.versionCode
+        versionName flutter.versionName
+    }
+}
+
+dependencies {
+    implementation 'androidx.multidex:multidex:2.0.1'
+}
+
+buildDir = "${rootProject.projectDir}/../build/app"

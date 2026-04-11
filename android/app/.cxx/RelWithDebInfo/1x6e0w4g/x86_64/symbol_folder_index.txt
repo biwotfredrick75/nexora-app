@@ -1,0 +1,1 @@
+/home/biwot/STUDY/CSHARP/VERP/wakulima_flutter_project/wakulima/android/build/app/intermediates/cxx/RelWithDebInfo/1x6e0w4g/obj/x86_64

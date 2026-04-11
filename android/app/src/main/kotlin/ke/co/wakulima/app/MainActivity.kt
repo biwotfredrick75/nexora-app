@@ -1,0 +1,5 @@
+package ke.co.wakulima.app
+
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity : FlutterActivity()

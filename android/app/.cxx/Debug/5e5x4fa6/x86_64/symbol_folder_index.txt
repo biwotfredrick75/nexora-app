@@ -1,0 +1,1 @@
+/home/biwot/STUDY/CSHARP/VERP/wakulima_flutter_project/wakulima/android/build/app/intermediates/cxx/Debug/5e5x4fa6/obj/x86_64

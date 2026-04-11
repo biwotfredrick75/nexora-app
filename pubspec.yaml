@@ -1,0 +1,77 @@
+name: wakulima
+description: Wakulima Dairy ERP — Modern agri-business management platform
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Navigation
+  go_router: ^13.2.0
+
+  # State management
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
+
+  # Local database
+  isar: ^3.1.0+1
+  isar_flutter_libs: ^3.1.0+1
+  path_provider: ^2.1.2
+
+  # BLE (Low Energy)
+  flutter_blue_plus: ^1.31.10
+  # Classic Bluetooth SPP (T-Scale and similar scales)
+  flutter_bluetooth_serial: ^0.4.0
+
+  # Network
+  dio: ^5.4.3+1
+  pretty_dio_logger: ^1.3.1
+
+  # Local storage (settings/tokens)
+  hive_flutter: ^1.1.0
+
+  # UI
+  flutter_svg: ^2.0.10+1
+  cached_network_image: ^3.3.1
+  shimmer: ^3.0.0
+  fl_chart: ^0.67.0
+  intl: ^0.19.0
+
+  # Camera / image
+  image_picker: ^1.1.2
+
+  # Utils
+  uuid: ^4.3.3
+  connectivity_plus: ^6.0.3
+  permission_handler: ^11.3.1
+  share_plus: ^9.0.0
+  pdf: ^3.11.0
+  printing: ^5.12.0
+  csv: ^6.0.0
+  equatable: ^2.0.5
+  dartz: ^0.10.1
+  freezed_annotation: ^2.4.1
+  json_annotation: ^4.9.0
+
+  # Background service (for BLE foreground)
+  flutter_foreground_task: ^6.1.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  build_runner: ^2.4.9
+  isar_generator: ^3.1.0+1
+  riverpod_generator: ^2.3.11
+  freezed: ^2.5.2
+  json_serializable: ^6.8.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/icons/

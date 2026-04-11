@@ -1,0 +1,1 @@
+/home/biwot/STUDY/CSHARP/VERP/wakulima_flutter_project/wakulima/android/app/build/intermediates/cxx/Debug/5e231l4o/obj/arm64-v8a
