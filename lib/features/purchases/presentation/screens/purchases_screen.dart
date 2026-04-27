@@ -446,7 +446,7 @@ class _SuppliersTabState extends ConsumerState<_SuppliersTab> {
             final items = _search.isEmpty
                 ? all
                 : all
-                    .where((s) => (s['name'] ?? s['supplier_name'] ?? '')
+                    .where((s) => (s['supplierName'] ?? s['supplierName'] ?? '')
                         .toString()
                         .toLowerCase()
                         .contains(_search.toLowerCase()))
@@ -625,7 +625,7 @@ class _GrnCard extends StatelessWidget {
 }
 
 String _supplierName(Map<String, dynamic> s) {
-  for (final k in ['name', 'supplier_name', 'full_name', 'company_name', 'title', 'short_name']) {
+  for (final k in ['name', 'supplierName', 'full_name', 'company_name', 'title', 'short_name']) {
     final v = s[k]?.toString().trim();
     if (v != null && v.isNotEmpty) return v;
   }
@@ -639,12 +639,12 @@ class _SupplierCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = _supplierName(supplier);
-    final phone = supplier['phone']?.toString() ??
+    final phone = supplier['memberNumber']?.toString() ??
         supplier['phone_number']?.toString() ??
         supplier['mobile']?.toString() ?? '';
     final code = supplier['code']?.toString() ??
-        supplier['supplier_code']?.toString() ??
-        supplier['short_name']?.toString() ?? '';
+        supplier['supplierId']?.toString() ??
+        supplier['supplierName']?.toString() ?? '';
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -1010,7 +1010,7 @@ class _AddGrnScreenState extends ConsumerState<_AddGrnScreen> {
               value: _supplierLabel,
               hint: 'Select supplier',
               onTap: () => _sheet(context, 'Select Supplier', suppliers,
-                  'name', 'supplier_code', (id, lbl) {
+                  'supplierName', 'supplierId', (id, lbl) {
                 setState(() { _supplierId = id; _supplierLabel = lbl; });
               }, fallbackKeys: ['supplier_name', 'full_name', 'company_name', 'title'])),
           const SizedBox(height: 14),
@@ -1343,7 +1343,7 @@ class _AddPurchaseScreenState extends ConsumerState<_AddPurchaseScreen> {
               value: _supplierLabel,
               hint: 'Select supplier',
               onTap: () => _sheet(context, 'Select Supplier', suppliers,
-                  'name', 'supplier_code', (id, lbl) {
+                  'supplierName', 'supplierId', (id, lbl) {
                 setState(() { _supplierId = id; _supplierLabel = lbl; });
               }, fallbackKeys: ['supplier_name', 'full_name', 'company_name', 'title'])),
           const SizedBox(height: 14),
@@ -1451,7 +1451,7 @@ class _AddPurchaseScreenState extends ConsumerState<_AddPurchaseScreen> {
           ),
           const SizedBox(height: 24),
 
-          _SaveBtn(label: 'Save', saving: _saving, onPressed: _save),
+          _SaveBtn(label: 'Save Purchase', saving: _saving, onPressed: _save),
           const SizedBox(height: 24),
         ],
       ),

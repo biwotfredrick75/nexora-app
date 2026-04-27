@@ -26,7 +26,7 @@ class ApiClient {
       LogInterceptor(
         requestBody: true,
         responseBody: true,
-        logPrint: (obj) => print('[API] $obj'),
+        logPrint: (obj) => print('[APIS] $obj'),
       ),
     ]);
   }

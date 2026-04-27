@@ -1,0 +1,28 @@
+{
+  "buildFiles": [
+    "/home/biwot/snap/flutter/common/flutter/packages/flutter_tools/gradle/src/main/scripts/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/home/biwot/Android/Sdk/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/home/biwot/STUDY/CSHARP/VERP/nexora/nexora-app/android/app/.cxx/Debug/6b3e354c/arm64-v8a",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/home/biwot/Android/Sdk/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/home/biwot/STUDY/CSHARP/VERP/nexora/nexora-app/android/app/.cxx/Debug/6b3e354c/arm64-v8a",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {},
+  "toolchains": {
+    "toolchain": {
+      "cCompilerExecutable": "/home/biwot/Android/Sdk/ndk/26.3.11579264/toolchains/llvm/prebuilt/linux-x86_64/bin/clang.lld",
+      "cppCompilerExecutable": "/home/biwot/Android/Sdk/ndk/26.3.11579264/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++.lld"
+    }
+  },
+  "cFileExtensions": [],
+  "cppFileExtensions": []
+}

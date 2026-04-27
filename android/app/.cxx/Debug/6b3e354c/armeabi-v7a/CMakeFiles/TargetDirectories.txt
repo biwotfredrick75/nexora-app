@@ -1,0 +1,2 @@
+/home/biwot/STUDY/CSHARP/VERP/nexora/nexora-app/android/app/.cxx/Debug/6b3e354c/armeabi-v7a/CMakeFiles/edit_cache.dir
+/home/biwot/STUDY/CSHARP/VERP/nexora/nexora-app/android/app/.cxx/Debug/6b3e354c/armeabi-v7a/CMakeFiles/rebuild_cache.dir
