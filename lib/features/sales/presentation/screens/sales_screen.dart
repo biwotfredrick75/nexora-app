@@ -198,9 +198,6 @@ class _SalesScreenState extends ConsumerState<SalesScreen>
         Padding(
           padding: const EdgeInsets.only(left: 48),
           child: Row(children: [
-            const Text('WAKULIMA DEV ',
-                style: TextStyle(fontFamily: 'Poppins', fontSize: 12,
-                    fontWeight: FontWeight.w600, color: WakulimaColors.inkSoft)),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(color: WakulimaColors.primary50,

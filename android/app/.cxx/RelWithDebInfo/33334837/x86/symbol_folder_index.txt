@@ -1,0 +1,1 @@
+/home/biwot/STUDY/CSHARP/VERP/nexora/nexora-app/build/app/intermediates/cxx/RelWithDebInfo/33334837/obj/x86

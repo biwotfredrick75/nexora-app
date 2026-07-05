@@ -22,6 +22,8 @@ import 'package:wakulima/features/analytics/presentation/screens/analytics_scree
 import 'package:wakulima/features/settings/presentation/screens/settings_screen.dart';
 import 'package:wakulima/features/inventory/presentation/screens/inventory_screen.dart';
 import 'package:wakulima/features/inventory/presentation/screens/inventory_transfer_screen.dart';
+import 'package:wakulima/features/tracking/presentation/screens/my_movements_screen.dart';
+import 'package:wakulima/features/farmers/presentation/screens/milk_supplier_payslips_screen.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -162,6 +164,14 @@ final appRouter = GoRouter(
               [],
         );
       },
+    ),
+    GoRoute(
+      path: '/my-movements',
+      builder: (_, __) => const MyMovementsScreen(),
+    ),
+    GoRoute(
+      path: '/reporting/milksupplierpayslips',
+      builder: (_, __) => const MilkSupplierPayslipsScreen(),
     ),
   ],
   errorBuilder: (context, state) => Scaffold(

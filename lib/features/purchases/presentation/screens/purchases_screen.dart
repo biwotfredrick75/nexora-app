@@ -993,7 +993,7 @@ class _AddGrnScreenState extends ConsumerState<_AddGrnScreen> {
         data: (d) => d, orElse: () => <Map<String, dynamic>>[]);
     final locations = ref.watch(sfLocationsProvider).maybeWhen(
         data: (d) => d, orElse: () => <Map<String, dynamic>>[]);
-    final items = ref.watch(sfStockItemsProvider).maybeWhen(
+    final items = ref.watch(sfStockItemsProvider(null)).maybeWhen(
         data: (d) => d, orElse: () => <Map<String, dynamic>>[]);
 
     return Scaffold(
@@ -1326,7 +1326,7 @@ class _AddPurchaseScreenState extends ConsumerState<_AddPurchaseScreen> {
         data: (d) => d, orElse: () => <Map<String, dynamic>>[]);
     final locations = ref.watch(sfLocationsProvider).maybeWhen(
         data: (d) => d, orElse: () => <Map<String, dynamic>>[]);
-    final items = ref.watch(sfStockItemsProvider).maybeWhen(
+    final items = ref.watch(sfStockItemsProvider(null)).maybeWhen(
         data: (d) => d, orElse: () => <Map<String, dynamic>>[]);
 
     final grandTotal =

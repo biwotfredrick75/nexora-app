@@ -59,6 +59,36 @@ final collectionFormDataProvider = FutureProvider<Map<String, dynamic>>((ref) as
   return await auth.fetchCollectionFormData() ?? {};
 });
 
+// ─── App module config (enabled modules from ERP) ────────────────────────
+// StreamProvider polls every 15 s so disabling a module in the ERP is
+// reflected in the app within one polling cycle.  Invalidating the provider
+// (e.g. on app-foreground) triggers an immediate re-fetch.
+
+final enabledModuleIdsProvider = StreamProvider<Set<String>>((ref) async* {
+  Future<Set<String>> _fetch() async {
+    try {
+      final res = await ref.read(apiClientProvider).get('/setup/app-modules');
+      final body = res.data as Map<String, dynamic>;
+      final data = body['data'];
+      if (data is List) {
+        return data
+            .where((m) => (m as Map)['is_enabled'] == true)
+            .map((m) => (m as Map)['module_id'].toString())
+            .toSet();
+      }
+    } catch (_) {}
+    return <String>{};  // fail-open: show all modules
+  }
+
+  // Emit immediately so the grid renders without waiting for the first tick.
+  yield await _fetch();
+
+  // Then re-fetch every 15 seconds.
+  await for (final _ in Stream.periodic(const Duration(seconds: 15))) {
+    yield await _fetch();
+  }
+});
+
 // ─── Today's collection stats ─────────────────────────────────────────────
 
 final todayStatsProvider = FutureProvider<Map<String, double>>((ref) async {

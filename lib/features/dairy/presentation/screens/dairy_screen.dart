@@ -650,9 +650,6 @@ class _DairyScreenState extends ConsumerState<DairyScreen> {
         Padding(
           padding: const EdgeInsets.only(left: 48),
           child: Row(children: [
-            Text(_routeName ?? 'WAKULIMA DEV',
-                style: const TextStyle(fontFamily: 'Poppins', fontSize: 12,
-                    fontWeight: FontWeight.w600, color: WakulimaColors.inkSoft)),
             const SizedBox(width: 8),
             StreamBuilder<SyncStatus>(
               stream: SyncEngine().statusStream,

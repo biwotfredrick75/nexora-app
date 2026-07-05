@@ -1,0 +1,20 @@
+                        -H/home/biwot/snap/flutter/common/flutter/packages/flutter_tools/gradle/src/main/scripts
+-DCMAKE_SYSTEM_NAME=Android
+-DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+-DCMAKE_SYSTEM_VERSION=23
+-DANDROID_PLATFORM=android-23
+-DANDROID_ABI=x86
+-DCMAKE_ANDROID_ARCH_ABI=x86
+-DANDROID_NDK=/home/biwot/Android/Sdk/ndk/26.3.11579264
+-DCMAKE_ANDROID_NDK=/home/biwot/Android/Sdk/ndk/26.3.11579264
+-DCMAKE_TOOLCHAIN_FILE=/home/biwot/Android/Sdk/ndk/26.3.11579264/build/cmake/android.toolchain.cmake
+-DCMAKE_MAKE_PROGRAM=/home/biwot/Android/Sdk/cmake/3.22.1/bin/ninja
+-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=/home/biwot/STUDY/CSHARP/VERP/nexora/nexora-app/build/app/intermediates/cxx/RelWithDebInfo/33334837/obj/x86
+-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=/home/biwot/STUDY/CSHARP/VERP/nexora/nexora-app/build/app/intermediates/cxx/RelWithDebInfo/33334837/obj/x86
+-DCMAKE_BUILD_TYPE=RelWithDebInfo
+-B/home/biwot/STUDY/CSHARP/VERP/nexora/nexora-app/android/app/.cxx/RelWithDebInfo/33334837/x86
+-GNinja
+-Wno-dev
+--no-warn-unused-cli
+                        Build command args: []
+                        Version: 2

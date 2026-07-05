@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -101,6 +102,15 @@ class _DirectDeliveryScreenState extends ConsumerState<DirectDeliveryScreen> {
           SfStockPickerSheet(items: stockItems, onPicked: (i) => picked = i),
     );
     if (picked != null && mounted) {
+      final sellingPrice = (picked!['price'] as num?)?.toDouble() ?? 0;
+      if (sellingPrice <= 0) {
+        _snack(
+          'No selling price set for "${picked!['description'] ?? picked!['name']}". '
+          'Please set a selling price in the system before adding this item.',
+          error: true,
+        );
+        return;
+      }
       setState(() => _items.add(SfLineItem(
             stockId: picked!['stock_id']?.toString() ??
                 picked!['item_code']?.toString() ?? '',
@@ -108,7 +118,7 @@ class _DirectDeliveryScreenState extends ConsumerState<DirectDeliveryScreen> {
                 picked!['name']?.toString() ?? '',
             unit: picked!['units_id']?.toString() ??
                 picked!['unit']?.toString() ?? '',
-            price: (picked!['price'] as num?)?.toDouble() ?? 0,
+            price: sellingPrice,
             costPrice: sfItemCost(picked!),
           )));
     }
@@ -132,11 +142,6 @@ class _DirectDeliveryScreenState extends ConsumerState<DirectDeliveryScreen> {
   Future<void> _submit({bool place = false}) async {
     if (_debtorNo == null) { _snack('Select a customer'); return; }
     if (_items.isEmpty)   { _snack('Add at least one item'); return; }
-    final belowCost = _items.where((i) => i.isBelowCost).toList();
-    if (belowCost.isNotEmpty) {
-      _snack('${belowCost.first.description}: price is below cost. Please correct before saving.');
-      return;
-    }
 
     setState(() => _submitting = true);
     try {
@@ -179,6 +184,17 @@ class _DirectDeliveryScreenState extends ConsumerState<DirectDeliveryScreen> {
 
       ref.invalidate(_deliveriesListProvider);
       _resetForm();
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      String msg = 'Failed to save delivery';
+      if (data is Map) {
+        msg = data['message']?.toString() ?? msg;
+        final errors = data['errors'];
+        if (errors is Map && errors.isNotEmpty) {
+          msg = errors.values.first?.toString() ?? msg;
+        }
+      }
+      _snack(msg);
     } catch (e) {
       _snack('Error: $e');
     } finally {
@@ -199,7 +215,7 @@ class _DirectDeliveryScreenState extends ConsumerState<DirectDeliveryScreen> {
     final customersAsync    = ref.watch(sfCustomersProvider);
     final salespersonsAsync = ref.watch(sfSalespersonsProvider);
     final locationsAsync    = ref.watch(sfLocationsProvider);
-    final stockAsync        = ref.watch(sfStockItemsProvider);
+    final stockAsync        = ref.watch(sfStockItemsProvider(_locationId));
 
     nextRefAsync.whenData((r) {
       if (_refCtrl.text.isEmpty && r.isNotEmpty) {
@@ -209,10 +225,11 @@ class _DirectDeliveryScreenState extends ConsumerState<DirectDeliveryScreen> {
       }
     });
 
-    final customers    = customersAsync.maybeWhen(data: (d) => d, orElse: () => []);
-    final salespersons = salespersonsAsync.maybeWhen(data: (d) => d, orElse: () => []);
-    final locations    = locationsAsync.maybeWhen(data: (d) => d, orElse: () => []);
-    final stockItems   = stockAsync.maybeWhen(data: (d) => d, orElse: () => <Map<String, dynamic>>[]);
+    final customers    = customersAsync.maybeWhen(data: (d) => d, orElse: () => <Map<String, dynamic>>[]);
+    final salespersons = salespersonsAsync.maybeWhen(data: (d) => d, orElse: () => <Map<String, dynamic>>[]);
+    final locations    = locationsAsync.maybeWhen(data: (d) => d, orElse: () => <Map<String, dynamic>>[]);
+    final stockItems   = stockAsync.maybeWhen(data: (d) => d, orElse: () => <Map<String, dynamic>>[])
+        .where((i) => ((i['price'] as num?)?.toDouble() ?? 0) > 0).toList();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F7),
@@ -256,18 +273,18 @@ class _DirectDeliveryScreenState extends ConsumerState<DirectDeliveryScreen> {
 
                     // Customer
                     const SfSectionLabel('Customer *'),
-                    SfDropdown(
+                    SfSearchField(
                       hint: 'Select customer',
-                      value: _debtorNo,
-                      items: customers.map((c) => DropdownMenuItem(
-                        value: c['debtor_no']?.toString(),
-                        child: Text(
-                            c['name']?.toString() ?? c['debtor_no']?.toString() ?? '',
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                fontFamily: 'Poppins', fontSize: 13)),
-                      )).toList(),
-                      onChanged: (v) => setState(() => _debtorNo = v),
+                      selectedValue: _debtorNo,
+                      items: customers,
+                      valueFn: (c) => c['debtor_no']?.toString() ?? '',
+                      labelFn: (c) => c['name']?.toString() ?? c['debtor_no']?.toString() ?? '',
+                      subLabelFn: (c) => c['debtor_no']?.toString(),
+                      searchFn: (c, q) =>
+                          (c['name'] ?? '').toString().toLowerCase().contains(q) ||
+                          (c['debtor_no'] ?? '').toString().toLowerCase().contains(q),
+                      pickerTitle: 'Select Customer',
+                      onChanged: (c) => setState(() => _debtorNo = c['debtor_no']?.toString()),
                     ),
                     const SizedBox(height: 12),
 
@@ -297,21 +314,14 @@ class _DirectDeliveryScreenState extends ConsumerState<DirectDeliveryScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const SfSectionLabel('Salesperson'),
-                            SfDropdown(
+                            SfSearchField(
                               hint: 'Select',
-                              value: _salespersonId,
-                              items: salespersons.map((s) => DropdownMenuItem(
-                                value: s['id']?.toString() ??
-                                    s['salesperson_id']?.toString(),
-                                child: Text(
-                                    s['name']?.toString() ??
-                                        s['salesperson_name']?.toString() ?? '',
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                        fontFamily: 'Poppins', fontSize: 12)),
-                              )).toList(),
-                              onChanged: (v) =>
-                                  setState(() => _salespersonId = v),
+                              selectedValue: _salespersonId,
+                              items: salespersons,
+                              valueFn: (s) => s['id']?.toString() ?? s['salesperson_id']?.toString() ?? '',
+                              labelFn: (s) => s['name']?.toString() ?? s['salesperson_name']?.toString() ?? '',
+                              pickerTitle: 'Select Salesperson',
+                              onChanged: (s) => setState(() => _salespersonId = (s['id'] ?? s['salesperson_id'])?.toString()),
                             ),
                           ])),
                     ]),
@@ -319,19 +329,14 @@ class _DirectDeliveryScreenState extends ConsumerState<DirectDeliveryScreen> {
 
                     // From Store
                     const SfSectionLabel('From Store'),
-                    SfDropdown(
+                    SfSearchField(
                       hint: 'Select warehouse',
-                      value: _locationId,
-                      items: locations.map((l) => DropdownMenuItem(
-                        value: l['id']?.toString(),
-                        child: Text(
-                            l['location_name']?.toString() ??
-                                l['name']?.toString() ?? '',
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                fontFamily: 'Poppins', fontSize: 13)),
-                      )).toList(),
-                      onChanged: (v) => setState(() => _locationId = v),
+                      selectedValue: _locationId,
+                      items: locations,
+                      valueFn: (l) => l['id']?.toString() ?? '',
+                      labelFn: (l) => l['location_name']?.toString() ?? l['name']?.toString() ?? '',
+                      pickerTitle: 'Select Store',
+                      onChanged: (l) => setState(() => _locationId = l['id']?.toString()),
                     ),
                     const SizedBox(height: 18),
 

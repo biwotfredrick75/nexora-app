@@ -1,17 +1,25 @@
+import 'dart:async' show unawaited;
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:wakulima/core/network/api_client.dart';
 import 'package:wakulima/core/router/app_router.dart' show authNotifier;
 import 'package:wakulima/core/theme/app_theme.dart';
+import 'package:wakulima/core/utils/location_sync_service.dart';
+import 'package:wakulima/core/utils/providers.dart';
 import 'package:wakulima/features/auth/data/auth_api_service.dart';
 
-class LoginScreen extends StatefulWidget {
+// Singleton so the service persists across navigation
+LocationSyncService? _locationSync;
+
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey     = GlobalKey<FormState>();
   final _locCodeCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
@@ -36,6 +44,18 @@ class _LoginScreenState extends State<LoginScreen> {
     if (err != null) {
       setState(() => _error = err);
     } else {
+      // Request location permission while still on login screen so the system
+      // dialog appears here (not after navigation has already happened).
+      await LocationSyncService.requestPermissions();
+      if (!mounted) return;
+
+      _locationSync?.stop();
+      final user = Hive.box('auth').get('user') as Map?;
+      final identifier = user?['loc_code']?.toString() ?? _locCodeCtrl.text.trim();
+      _locationSync = LocationSyncService(ref, identifier, 'grader');
+      // start() will find permissions already granted and skip the dialog;
+      // it pushes the first position immediately then streams on movement.
+      unawaited(_locationSync!.start());
       authNotifier.onChange();
     }
   }
@@ -46,6 +66,9 @@ class _LoginScreenState extends State<LoginScreen> {
     _passwordCtrl.dispose();
     super.dispose();
   }
+
+  // Also stop sync on logout (called from elsewhere via the singleton)
+  static void stopLocationSync() => _locationSync?.stop();
 
   @override
   Widget build(BuildContext context) {
@@ -71,13 +94,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(width: 12),
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('WAKULIMA',
-                    style: TextStyle(
-                      fontFamily: 'Poppins', fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: WakulimaColors.primary700,
-                      letterSpacing: 2,
-                    )),
                   Text('Dairy Platform',
                     style: TextStyle(
                       fontFamily: 'Poppins', fontSize: 12,

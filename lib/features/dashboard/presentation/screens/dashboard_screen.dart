@@ -1,11 +1,13 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:wakulima/core/network/api_client.dart';
 import 'package:wakulima/core/router/module_registry.dart';
 import 'package:wakulima/core/theme/app_theme.dart';
 import 'package:wakulima/core/utils/app_constants.dart';
+import 'package:wakulima/core/utils/providers.dart';
 import 'package:wakulima/core/widgets/module_tile.dart';
 import 'package:wakulima/core/widgets/stat_card.dart';
 
@@ -37,13 +39,14 @@ class _DayBar {
 
 // ── Screen ───────────────────────────────────────────────────────────────────
 
-class DashboardScreen extends StatefulWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
   @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends ConsumerState<DashboardScreen>
+    with WidgetsBindingObserver {
   Map<String, dynamic> _user = {};
   late Future<_DashboardData> _dataFuture;
   int _touchedIndex = -1;
@@ -51,10 +54,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     final box = Hive.box('auth');
     final u = box.get('user');
     if (u is Map) _user = Map<String, dynamic>.from(u);
     _dataFuture = _loadDashboardData();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // Re-fetch module config the moment the user brings the app to foreground.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ref.invalidate(enabledModuleIdsProvider);
+    }
   }
 
   // ── Data loading ─────────────────────────────────────────────────────────
@@ -147,7 +165,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _logout() async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Sign out',
             style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600)),
@@ -155,10 +173,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             style: TextStyle(fontFamily: 'Poppins')),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
+              onPressed: () => Navigator.pop(ctx, false),
               child: const Text('Cancel')),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(backgroundColor: WakulimaColors.error),
             child: const Text('Sign out'),
           ),
@@ -224,12 +242,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text('WAKULIMA',
-                                      style: TextStyle(
-                                          fontFamily: 'Poppins', fontSize: 13,
-                                          fontWeight: FontWeight.w700,
-                                          color: WakulimaColors.primary700,
-                                          letterSpacing: 1.5)),
                                   Text(station,
                                       style: const TextStyle(
                                           fontFamily: 'Poppins', fontSize: 10,
@@ -328,51 +340,46 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
 
+                  // ── My Movements quick card ──────────────────────────────
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                    sliver: SliverToBoxAdapter(
+                      child: GestureDetector(
+                        onTap: () => context.push('/my-movements'),
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(colors: [
+                              WakulimaColors.primary700,
+                              WakulimaColors.primary700.withOpacity(0.85),
+                            ], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [BoxShadow(color: WakulimaColors.primary700.withOpacity(0.25), blurRadius: 10, offset: const Offset(0, 4))],
+                          ),
+                          child: Row(children: [
+                            Container(
+                              width: 44, height: 44,
+                              decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
+                              child: const Icon(Icons.directions_run_rounded, color: Colors.white, size: 24),
+                            ),
+                            const SizedBox(width: 14),
+                            const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              Text('My Movements', style: TextStyle(fontFamily: 'Poppins', fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
+                              Text('View route history & km covered', style: TextStyle(fontFamily: 'Poppins', fontSize: 11, color: Colors.white70)),
+                            ])),
+                            const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white70, size: 14),
+                          ]),
+                        ),
+                      ),
+                    ),
+                  ),
+
                   // ── Modules grid ─────────────────────────────────────────
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
                     sliver: SliverToBoxAdapter(
-                      child: Column(children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          child: Row(children: [
-                            const Text('Modules',
-                                style: TextStyle(fontFamily: 'Poppins',
-                                    fontSize: 16, fontWeight: FontWeight.w700,
-                                    color: WakulimaColors.ink)),
-                            const Spacer(),
-                            Text('${ModuleRegistry.all.length} available',
-                                style: const TextStyle(fontFamily: 'Poppins',
-                                    fontSize: 12,
-                                    color: WakulimaColors.inkMuted)),
-                          ]),
-                        ),
-                        GridView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount:  2,
-                            mainAxisSpacing: 10,
-                            crossAxisSpacing: 10,
-                            childAspectRatio: 1.25,
-                          ),
-                          itemCount: ModuleRegistry.all.length,
-                          itemBuilder: (context, index) {
-                            final module = ModuleRegistry.all[index];
-                            return ModuleTile(
-                              module: module,
-                              onTap: () {
-                                if (module.access == ModuleAccess.locked) {
-                                  _showLockedDialog(module.title);
-                                } else {
-                                  context.go(module.route);
-                                }
-                              },
-                            );
-                          },
-                        ),
-                      ]),
+                      child: _buildModulesGrid(),
                     ),
                   ),
 
@@ -390,6 +397,59 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       ),
     );
+  }
+
+  // ── Modules grid (filtered by ERP config) ────────────────────────────────
+
+  Widget _buildModulesGrid() {
+    final enabledAsync = ref.watch(enabledModuleIdsProvider);
+    final enabledIds   = enabledAsync.maybeWhen(data: (s) => s, orElse: () => <String>{});
+    final isLoading    = enabledAsync.isLoading;
+
+    // If still loading use all; if loaded + non-empty filter; if empty (fail) show all
+    final visibleModules = (!isLoading && enabledIds.isNotEmpty)
+        ? ModuleRegistry.all.where((m) => enabledIds.contains(m.id)).toList()
+        : ModuleRegistry.all;
+
+    return Column(children: [
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Row(children: [
+          const Text('Modules',
+              style: TextStyle(fontFamily: 'Poppins',
+                  fontSize: 16, fontWeight: FontWeight.w700,
+                  color: WakulimaColors.ink)),
+          const Spacer(),
+          Text('${visibleModules.length} available',
+              style: const TextStyle(fontFamily: 'Poppins',
+                  fontSize: 12, color: WakulimaColors.inkMuted)),
+        ]),
+      ),
+      GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 10,
+          childAspectRatio: 1.25,
+        ),
+        itemCount: visibleModules.length,
+        itemBuilder: (context, index) {
+          final module = visibleModules[index];
+          return ModuleTile(
+            module: module,
+            onTap: () {
+              if (module.access == ModuleAccess.locked) {
+                _showLockedDialog(module.title);
+              } else {
+                context.go(module.route);
+              }
+            },
+          );
+        },
+      ),
+    ]);
   }
 
   // ── Daily collection chart ───────────────────────────────────────────────
@@ -622,7 +682,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _showLockedDialog(String moduleName) {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(children: [
           const Icon(Icons.lock_outline, color: WakulimaColors.inkMuted),
@@ -637,7 +697,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         actions: [
           ElevatedButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(ctx),
             child: const Text('OK'),
           ),
         ],

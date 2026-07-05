@@ -2,12 +2,13 @@ import 'package:intl/intl.dart';
 
 class AppConstants {
  // API
- static const String apiBaseUrl     = 'https://74aa-102-210-25-82.ngrok-free.app';
+ static const String apiBaseUrl     = 'https://nexora-backend.kindocean-79553321.southafricanorth.azurecontainerapps.io';
  static const String appVersion     = '3.1.118';
  static const String appName        = 'Nexora';
  // Hive box names
  static const String authBox        = 'auth';
  static const String settingsBox    = 'settings';
+ static const String customersBox   = 'customers';
  // BLE
  static const String weightServiceUuid = '00001808-0000-1000-8000-00805f9b34fb';
  static const String weightCharUuid    = '00002a98-0000-1000-8000-00805f9b34fb';

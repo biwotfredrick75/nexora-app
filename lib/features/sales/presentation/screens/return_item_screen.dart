@@ -29,7 +29,7 @@ class _ReturnCartItem {
     this.batchNo,
   });
 
-  double get lineTotal => qty * price * (1 - discountPct / 100);
+  double get lineTotal => qty * price;
 }
 
 // ── Providers ─────────────────────────────────────────────────────────────────
@@ -60,7 +60,7 @@ final _returnsProvider =
   try {
     final res = await api
         .get('/sales/credit-notes',
-            params: {'date_from': from, 'date_to': to, 'cn_type': 'return', 'per_page': '100'})
+            params: {'date_from': from, 'date_to': to, 'per_page': '100'})
         .timeout(const Duration(seconds: 12));
     final body = res.data as Map<String, dynamic>;
     if (body['success'] != true) return [];
@@ -105,6 +105,9 @@ class _ReturnItemScreenState extends ConsumerState<ReturnItemScreen>
   // ── Cart ─────────────────────────────────────────────────────────────────
   final List<_ReturnCartItem> _cart = [];
 
+  // ── Return type ──────────────────────────────────────────────────────────
+  String _returnType = 'return_to_store';
+
   // ── Submission ───────────────────────────────────────────────────────────
   bool _submitting = false;
 
@@ -126,7 +129,7 @@ class _ReturnItemScreenState extends ConsumerState<ReturnItemScreen>
   double get _discPct => (_item?['discount_pct'] as num?)?.toDouble() ?? 0;
 
   double get _returnValue =>
-      _enteredQty > 0 ? _enteredQty * _unitPrice * (1 - _discPct / 100) : 0;
+      _enteredQty > 0 ? _enteredQty * _unitPrice : 0;
 
   double get _cartTotal =>
       _cart.fold(0, (s, r) => s + r.lineTotal);
@@ -174,7 +177,10 @@ class _ReturnItemScreenState extends ConsumerState<ReturnItemScreen>
           .timeout(const Duration(seconds: 12));
       final body = res.data as Map<String, dynamic>;
       final items = body['data']?['items'] as List? ?? [];
-      setState(() => _returnItems = items.map((e) => Map<String, dynamic>.from(e as Map)).toList());
+      setState(() => _returnItems = items
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .where((item) => ((item['price'] as num?)?.toDouble() ?? 0) > 0)
+          .toList());
     } catch (_) {} finally {
       if (mounted) setState(() => _loadingItems = false);
     }
@@ -254,6 +260,15 @@ class _ReturnItemScreenState extends ConsumerState<ReturnItemScreen>
     final qty = _enteredQty;
     if (qty <= 0) { _snack('Enter a return quantity'); return; }
     if (qty > _maxQty) { _snack('Qty exceeds max returnable (${_nf.format(_maxQty)})'); return; }
+    final itemPrice = (_item!['price'] as num?)?.toDouble() ?? 0;
+    if (itemPrice <= 0) {
+      _snack(
+        'No selling price found for "${_item!['description'] ?? _item!['stock_id']}". '
+        'Please set a selling price before processing this return.',
+        error: true,
+      );
+      return;
+    }
 
     // Check duplicate — merge if same stock_id
     final existingIdx = _cart.indexWhere((r) => r.stockId == _item!['stock_id']);
@@ -304,7 +319,7 @@ class _ReturnItemScreenState extends ConsumerState<ReturnItemScreen>
 
       // 1. Create draft credit note
       final cnRes = await api.post('/sales/credit-notes', data: {
-        'cn_type':   'return',
+        'cn_type':   _returnType,
         'inv_id':    _invoice?['id'],
         'debtor_no': _customer!['debtor_no'],
         'cn_date':   _fmtDate,
@@ -352,12 +367,101 @@ class _ReturnItemScreenState extends ConsumerState<ReturnItemScreen>
         _batchCtrl.clear();
         _tabs.animateTo(1); // switch to history tab
       });
-      _snack('Return $cnNo processed. Invoice reduced, stock restocked.', error: false);
+      final typeLabel = _returnTypeLabel(_returnType);
+      _snack('$typeLabel $cnNo processed successfully.', error: false);
     } catch (e) {
       _snack('Error: ${e.toString().replaceAll('DioException', 'Network error')}');
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
+  }
+
+  // ── Return type helpers ────────────────────────────────────────────────────
+
+  static const _returnTypes = [
+    ('return_to_store', 'Return to Store'),
+    ('damage',          'Damage'),
+    ('discount',        'Discount'),
+    ('write_off',       'Written Off'),
+  ];
+
+  static String _returnTypeLabel(String type) => switch (type) {
+    'return_to_store' => 'Return to Store',
+    'damage'          => 'Damage',
+    'discount'        => 'Discount',
+    'write_off'       => 'Written Off',
+    _                 => type,
+  };
+
+  static String _returnTypeInfo(String type) => switch (type) {
+    'return_to_store' => 'Goods go back into store inventory. Revenue and cost of goods both reversed. Customer balance reduced.',
+    'damage'          => 'Goods moved to damage location (not saleable). Revenue reversed but cost not recovered. Customer balance reduced.',
+    'discount'        => 'No stock movement. Revenue reduced by credit amount. Use for pricing errors or goodwill adjustments. Customer balance reduced.',
+    'write_off'       => 'No stock movement. Amount recorded as bad debt expense. Use for unrecoverable balances. Customer balance cleared.',
+    _                 => '',
+  };
+
+  static IconData _returnTypeIcon(String type) => switch (type) {
+    'return_to_store' => Icons.store_outlined,
+    'damage'          => Icons.warning_amber_outlined,
+    'discount'        => Icons.local_offer_outlined,
+    'write_off'       => Icons.remove_circle_outline,
+    _                 => Icons.keyboard_return_outlined,
+  };
+
+  Widget _buildTypeSelector() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+      decoration: BoxDecoration(
+        color: WakulimaColors.primary50,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: WakulimaColors.primary200),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _returnType,
+          isExpanded: true,
+          icon: const Icon(Icons.keyboard_arrow_down, size: 20, color: WakulimaColors.inkMuted),
+          style: const TextStyle(fontFamily: 'Poppins', fontSize: 13,
+              fontWeight: FontWeight.w500, color: WakulimaColors.ink),
+          dropdownColor: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          onChanged: (v) { if (v != null) setState(() => _returnType = v); },
+          items: _returnTypes.map(((String, String) t) {
+            return DropdownMenuItem<String>(
+              value: t.$1,
+              child: Row(children: [
+                Icon(_returnTypeIcon(t.$1), size: 16, color: WakulimaColors.primary700),
+                const SizedBox(width: 10),
+                Text(t.$2),
+              ]),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTypeBanner() {
+    final info = _returnTypeInfo(_returnType);
+    final icon = _returnTypeIcon(_returnType);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: WakulimaColors.primary50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: WakulimaColors.primary200),
+      ),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Icon(icon, size: 15, color: WakulimaColors.primary700),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(info,
+              style: const TextStyle(
+                  fontFamily: 'Poppins', fontSize: 11, color: WakulimaColors.primary700)),
+        ),
+      ]),
+    );
   }
 
   void _snack(String msg, {bool error = true}) {
@@ -417,6 +521,13 @@ class _ReturnItemScreenState extends ConsumerState<ReturnItemScreen>
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 120),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+        // ── Return Type ───────────────────────────────────────────────────
+        _sectionLabel('Return Type'),
+        _buildTypeSelector(),
+        const SizedBox(height: 6),
+        _buildTypeBanner(),
+        const SizedBox(height: 16),
 
         // ── Customer ──────────────────────────────────────────────────────
         _sectionLabel('Customer'),
@@ -1207,9 +1318,14 @@ class _InvoiceDetailSheetState extends State<_InvoiceDetailSheet> {
 
   static String _allocationLabel(String srcType, String? cnType) {
     if (srcType == 'credit_note') {
-      return cnType == 'return' ? 'Return Credit Note' :
-             cnType == 'discount' ? 'Discount Credit Note' :
-             cnType == 'write_off' ? 'Write-Off' : 'Credit Note';
+      return switch (cnType) {
+        'return'         => 'Return Credit Note',
+        'return_to_store'=> 'Return to Store',
+        'damage'         => 'Damage Return',
+        'discount'       => 'Discount Credit Note',
+        'write_off'      => 'Write-Off',
+        _                => 'Credit Note',
+      };
     }
     if (srcType == 'payment') return 'Customer Payment';
     if (srcType == 'deposit') return 'Customer Deposit';

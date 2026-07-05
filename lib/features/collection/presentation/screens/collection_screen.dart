@@ -116,7 +116,12 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
   String get _storeNo    => _graderUser['loc_code'] as String? ?? '—';
   String get _locCode    => _graderUser['loc_code'] as String? ?? '—';
   String get _graderName => _graderUser['name'] as String? ?? 'Grader';
-  int?   get _locationId => _graderUser['location_id'] as int?;
+  int?   get _locationId {
+    final v = _graderUser['location_id'];
+    if (v is num) return v.toInt();
+    if (v is String) return int.tryParse(v);
+    return null;
+  }
 
   String get _formattedDate {
     final now = DateTime.now();
@@ -150,11 +155,19 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
   Future<void> _loadFarmersByRoute(int routeId) async {
     setState(() { _farmers = []; _selectedFarmerId = null; _loadingFarmers = true; });
     final svc = AuthApiService(ApiClient());
-    final raw = await svc.getFarmersByRoute(routeId);
+    final raw = await svc.getFarmersByRoute(routeId); // also persists to Hive + Isar
     if (!mounted) return;
+
+    // Sync route name from Hive in case it was just written by getFarmersByRoute
+    final routeRaw = Hive.box('auth').get('route');
+    final routeName = (routeRaw is Map)
+        ? routeRaw['route_name'] as String? ?? _selectedRouteName
+        : _selectedRouteName;
+
     setState(() {
+      _selectedRouteName = routeName;
       _farmers = raw.map((f) => _FarmerItem(
-        id:   f['id'] as int,
+        id:   (f['id'] as num).toInt(),
         name: '${f['full_name']} (${f['farmer_no']})',
       )).toList();
       _loadingFarmers = false;

@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -14,7 +15,9 @@ final _orderNextRefProvider = FutureProvider.autoDispose<String>((ref) async {
         .get('/sales/orders/next-ref')
         .timeout(const Duration(seconds: 10));
     final body = res.data as Map<String, dynamic>;
-    return body['data']?.toString() ?? '';
+    final data = body['data'];
+    if (data is Map) return data['ref']?.toString() ?? '';
+    return data?.toString() ?? '';
   } catch (_) {
     return '';
   }
@@ -35,8 +38,9 @@ final _ordersListProvider =
     final body = res.data as Map<String, dynamic>;
     if (body['success'] != true) return [];
     final data = body['data'];
-    if (data is List)
+    if (data is List) {
       return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    }
     if (data is Map && data['data'] is List) {
       return (data['data'] as List)
           .map((e) => Map<String, dynamic>.from(e as Map))
@@ -107,6 +111,15 @@ class _OrderEntryScreenState extends ConsumerState<OrderEntryScreen> {
           SfStockPickerSheet(items: stockItems, onPicked: (i) => picked = i),
     );
     if (picked != null && mounted) {
+      final sellingPrice = (picked!['price'] as num?)?.toDouble() ?? 0;
+      if (sellingPrice <= 0) {
+        _snack(
+          'No selling price set for "${picked!['description'] ?? picked!['name']}". '
+          'Please set a selling price in the system before adding this item.',
+          error: true,
+        );
+        return;
+      }
       setState(() => _items.add(SfLineItem(
             stockId: picked!['stock_id']?.toString() ??
                 picked!['item_code']?.toString() ?? '',
@@ -114,7 +127,7 @@ class _OrderEntryScreenState extends ConsumerState<OrderEntryScreen> {
                 picked!['name']?.toString() ?? '',
             unit: picked!['units_id']?.toString() ??
                 picked!['unit']?.toString() ?? '',
-            price: (picked!['price'] as num?)?.toDouble() ?? 0,
+            price: sellingPrice,
             costPrice: sfItemCost(picked!),
           )));
     }
@@ -140,11 +153,6 @@ class _OrderEntryScreenState extends ConsumerState<OrderEntryScreen> {
   Future<void> _submit({bool place = false}) async {
     if (_debtorNo == null) { _snack('Select a customer'); return; }
     if (_items.isEmpty)   { _snack('Add at least one item'); return; }
-    final belowCost = _items.where((i) => i.isBelowCost).toList();
-    if (belowCost.isNotEmpty) {
-      _snack('${belowCost.first.description}: price is below cost. Please correct before saving.');
-      return;
-    }
 
     setState(() => _submitting = true);
     try {
@@ -189,6 +197,17 @@ class _OrderEntryScreenState extends ConsumerState<OrderEntryScreen> {
 
       ref.invalidate(_ordersListProvider);
       _resetForm();
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      String msg = 'Failed to save order';
+      if (data is Map) {
+        msg = data['message']?.toString() ?? msg;
+        final errors = data['errors'];
+        if (errors is Map && errors.isNotEmpty) {
+          msg = errors.values.first?.toString() ?? msg;
+        }
+      }
+      _snack(msg);
     } catch (e) {
       _snack('Error: $e');
     } finally {
@@ -209,7 +228,7 @@ class _OrderEntryScreenState extends ConsumerState<OrderEntryScreen> {
     final customersAsync    = ref.watch(sfCustomersProvider);
     final salespersonsAsync = ref.watch(sfSalespersonsProvider);
     final locationsAsync    = ref.watch(sfLocationsProvider);
-    final stockAsync        = ref.watch(sfStockItemsProvider);
+    final stockAsync        = ref.watch(sfStockItemsProvider(_locationId));
 
     nextRefAsync.whenData((r) {
       if (_refCtrl.text.isEmpty && r.isNotEmpty) {
@@ -219,10 +238,14 @@ class _OrderEntryScreenState extends ConsumerState<OrderEntryScreen> {
       }
     });
 
-    final customers    = customersAsync.maybeWhen(data: (d) => d, orElse: () => []);
-    final salespersons = salespersonsAsync.maybeWhen(data: (d) => d, orElse: () => []);
-    final locations    = locationsAsync.maybeWhen(data: (d) => d, orElse: () => []);
-    final stockItems   = stockAsync.maybeWhen(data: (d) => d, orElse: () => <Map<String, dynamic>>[]);
+    final customers    = customersAsync.maybeWhen(data: (d) => d, orElse: () => <Map<String, dynamic>>[]);
+    final salespersons = salespersonsAsync.maybeWhen(data: (d) => d, orElse: () => <Map<String, dynamic>>[]);
+    final locations    = locationsAsync.maybeWhen(data: (d) => d, orElse: () => <Map<String, dynamic>>[]);
+    final locationsError = locationsAsync.maybeWhen(error: (e, _) => e.toString(), orElse: () => null);
+    final stockItems   = stockAsync.maybeWhen(data: (d) => d, orElse: () => <Map<String, dynamic>>[])
+        .where((i) => ((i['price'] as num?)?.toDouble() ?? 0) > 0).toList();
+    final stockError   = stockAsync.maybeWhen(error: (e, _) => e.toString(), orElse: () => null);
+    final stockLoading = stockAsync.isLoading;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F7),
@@ -266,19 +289,18 @@ class _OrderEntryScreenState extends ConsumerState<OrderEntryScreen> {
 
                     // Customer
                     const SfSectionLabel('Customer *'),
-                    SfDropdown(
+                    SfSearchField(
                       hint: 'Select customer',
-                      value: _debtorNo,
-                      items: customers.map((c) => DropdownMenuItem(
-                        value: c['debtor_no']?.toString(),
-                        child: Text(
-                            c['name']?.toString() ??
-                                c['debtor_no']?.toString() ?? '',
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                fontFamily: 'Poppins', fontSize: 13)),
-                      )).toList(),
-                      onChanged: (v) => setState(() => _debtorNo = v),
+                      selectedValue: _debtorNo,
+                      items: customers,
+                      valueFn: (c) => c['debtor_no']?.toString() ?? '',
+                      labelFn: (c) => c['name']?.toString() ?? c['debtor_no']?.toString() ?? '',
+                      subLabelFn: (c) => c['debtor_no']?.toString(),
+                      searchFn: (c, q) =>
+                          (c['name'] ?? '').toString().toLowerCase().contains(q) ||
+                          (c['debtor_no'] ?? '').toString().toLowerCase().contains(q),
+                      pickerTitle: 'Select Customer',
+                      onChanged: (c) => setState(() => _debtorNo = c['debtor_no']?.toString()),
                     ),
                     const SizedBox(height: 12),
 
@@ -319,21 +341,14 @@ class _OrderEntryScreenState extends ConsumerState<OrderEntryScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const SfSectionLabel('Salesperson'),
-                            SfDropdown(
+                            SfSearchField(
                               hint: 'Select',
-                              value: _salespersonId,
-                              items: salespersons.map((s) => DropdownMenuItem(
-                                value: s['id']?.toString() ??
-                                    s['salesperson_id']?.toString(),
-                                child: Text(
-                                    s['name']?.toString() ??
-                                        s['salesperson_name']?.toString() ?? '',
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                        fontFamily: 'Poppins', fontSize: 12)),
-                              )).toList(),
-                              onChanged: (v) =>
-                                  setState(() => _salespersonId = v),
+                              selectedValue: _salespersonId,
+                              items: salespersons,
+                              valueFn: (s) => s['id']?.toString() ?? s['salesperson_id']?.toString() ?? '',
+                              labelFn: (s) => s['name']?.toString() ?? s['salesperson_name']?.toString() ?? '',
+                              pickerTitle: 'Select Salesperson',
+                              onChanged: (s) => setState(() => _salespersonId = (s['id'] ?? s['salesperson_id'])?.toString()),
                             ),
                           ])),
                       const SizedBox(width: 10),
@@ -341,21 +356,40 @@ class _OrderEntryScreenState extends ConsumerState<OrderEntryScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const SfSectionLabel('From Store'),
-                            SfDropdown(
-                              hint: 'Select',
-                              value: _locationId,
-                              items: locations.map((l) => DropdownMenuItem(
-                                value: l['id']?.toString(),
-                                child: Text(
-                                    l['location_name']?.toString() ??
-                                        l['name']?.toString() ?? '',
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                        fontFamily: 'Poppins', fontSize: 12)),
-                              )).toList(),
-                              onChanged: (v) =>
-                                  setState(() => _locationId = v),
-                            ),
+                            if (locationsError != null)
+                              GestureDetector(
+                                onTap: () => ref.invalidate(sfLocationsProvider),
+                                child: SfInputBox(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                  child: Row(children: [
+                                    const Icon(Icons.warning_amber_rounded, size: 14, color: WakulimaColors.error),
+                                    const SizedBox(width: 6),
+                                    const Expanded(child: Text('Tap to retry', style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: WakulimaColors.error))),
+                                  ]),
+                                ),
+                              )
+                            else if (locationsAsync.isLoading)
+                              SfInputBox(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                                child: Row(children: const [
+                                  SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: WakulimaColors.inkMuted)),
+                                  SizedBox(width: 8),
+                                  Text('Loading…', style: TextStyle(fontFamily: 'Poppins', fontSize: 13, color: WakulimaColors.inkMuted)),
+                                ]),
+                              )
+                            else
+                              SfSearchField(
+                                hint: locations.isEmpty ? 'No stores found' : 'Select',
+                                selectedValue: _locationId,
+                                items: locations,
+                                valueFn: (l) => l['id']?.toString() ?? '',
+                                labelFn: (l) => l['name']?.toString() ?? '',
+                                pickerTitle: 'Select Store',
+                                onChanged: (l) => setState(() {
+                                  _locationId = l['id']?.toString();
+                                  ref.invalidate(sfStockItemsProvider(_locationId));
+                                }),
+                              ),
                           ])),
                     ]),
                     const SizedBox(height: 12),
@@ -401,17 +435,34 @@ class _OrderEntryScreenState extends ConsumerState<OrderEntryScreen> {
                               fontWeight: FontWeight.w700,
                               color: WakulimaColors.ink)),
                       const Spacer(),
-                      TextButton.icon(
-                        onPressed: stockItems.isEmpty
-                            ? null
-                            : () => _addItem(stockItems),
-                        icon: const Icon(Icons.add_circle_outline, size: 16),
-                        label: const Text('Add Item',
-                            style: TextStyle(
-                                fontFamily: 'Poppins', fontSize: 12)),
-                        style: TextButton.styleFrom(
-                            foregroundColor: WakulimaColors.primary700),
-                      ),
+                      if (stockLoading)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          child: SizedBox(width: 14, height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: WakulimaColors.primary700)),
+                        )
+                      else if (stockError != null)
+                        TextButton.icon(
+                          onPressed: () => ref.invalidate(sfStockItemsProvider(_locationId)),
+                          icon: const Icon(Icons.refresh, size: 16, color: WakulimaColors.error),
+                          label: const Text('Retry', style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: WakulimaColors.error)),
+                        )
+                      else
+                        TextButton.icon(
+                          onPressed: stockItems.isEmpty
+                              ? () => _snack(
+                                  _locationId == null
+                                      ? 'Select a store first, or no items have a selling price set'
+                                      : 'No items with a selling price found in this store',
+                                  error: false)
+                              : () => _addItem(stockItems),
+                          icon: const Icon(Icons.add_circle_outline, size: 16),
+                          label: const Text('Add Item',
+                              style: TextStyle(
+                                  fontFamily: 'Poppins', fontSize: 12)),
+                          style: TextButton.styleFrom(
+                              foregroundColor: WakulimaColors.primary700),
+                        ),
                     ]),
                     const SizedBox(height: 6),
 

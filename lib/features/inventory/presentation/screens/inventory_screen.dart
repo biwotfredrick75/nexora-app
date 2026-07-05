@@ -328,10 +328,6 @@ class _Header extends StatelessWidget {
                       fontWeight: FontWeight.w700, color: WakulimaColors.ink)),
               const SizedBox(height: 3),
               Row(children: [
-                const Text('WAKULIMA DEV ',
-                    style: TextStyle(
-                        fontFamily: 'Poppins', fontSize: 11,
-                        fontWeight: FontWeight.w600, color: WakulimaColors.inkSoft)),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(

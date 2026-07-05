@@ -14,9 +14,13 @@
     <!-- BLE hardware feature -->
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
 
-    <!-- ─── Location (needed for BLE scan on Android < 12) ──────────── -->
+    <!-- ─── Location ─────────────────────────────────────────────────── -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Required for background GPS sync (Android 10+) -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <!-- Required for foreground service with location type (Android 14+) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 
     <!-- ─── Network ─────────────────────────────────────────────────── -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -66,7 +70,7 @@
         <!-- BLE Foreground Service -->
         <service
             android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
-            android:foregroundServiceType="connectedDevice"
+            android:foregroundServiceType="connectedDevice|location"
             android:exported="false" />
 
         <meta-data

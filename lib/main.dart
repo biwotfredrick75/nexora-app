@@ -10,9 +10,9 @@ void main() async {
   // System UI
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.dark,
-    systemNavigationBarColor: Colors.white,
-    systemNavigationBarIconBrightness: Brightness.dark,
+    statusBarIconBrightness: Brightness.light,
+    systemNavigationBarColor: Color(0xFF080d1e),
+    systemNavigationBarIconBrightness: Brightness.light,
   ));
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
@@ -22,6 +22,8 @@ void main() async {
   await Hive.initFlutter();
   await Hive.openBox('settings');
   await Hive.openBox('auth');
+  await Hive.openBox('customers');
+  await Hive.openBox('app'); // general-purpose / offline queues
   // Init sync engine (sets up connectivity listener + periodic timer)
   await SyncEngine().init();
   runApp(

@@ -6,12 +6,13 @@ import 'package:wakulima/core/database/models/farmer_model.dart';
 /// All reads are instant (no network). Farmers are written once on login.
 class FarmersLocalRepository {
   /// Persist a list of farmers from the login API response into Isar.
-  /// Upserts by serverId so re-login doesn't create duplicates.
+  /// Clears existing records for the route first to avoid unique-index
+  /// violations on farmerCode / uuid when the server sends fresh data.
   Future<void> saveFromLogin(List<dynamic> farmers, int routeId) async {
     final isar = await AppDatabase.instance;
     final models = farmers.map((f) {
       final m = f as Map<String, dynamic>;
-      final model = FarmerModel()
+      return FarmerModel()
         ..serverId = (m['id'] as num?)?.toInt()
         ..routeId = routeId
         ..uuid = m['farmer_no']?.toString() ?? ''
@@ -33,20 +34,18 @@ class FarmersLocalRepository {
         ..createdAt = DateTime.now()
         ..updatedAt = DateTime.now()
         ..synced = true;
-      return model;
     }).toList();
 
+    // Deduplicate by farmerCode (= uuid) — server may return duplicate farmer_no
+    // values, which would cause intra-batch unique-index violations in putAll.
+    final seen = <String>{};
+    final unique = models.where((m) => seen.add(m.farmerCode)).toList();
+
     await isar.writeTxn(() async {
-      // Upsert each farmer: if serverId exists, update; otherwise insert.
-      for (final model in models) {
-        if (model.serverId != null) {
-          final existing = await isar.farmerModels.getByServerId(model.serverId);
-          if (existing != null) {
-            model.id = existing.id; // keep same Isar ID to update in place
-          }
-        }
-        await isar.farmerModels.put(model);
-      }
+      // Drop stale records for this route so unique indexes on farmerCode/uuid
+      // never collide with the fresh server data.
+      await isar.farmerModels.where().routeIdEqualTo(routeId).deleteAll();
+      await isar.farmerModels.putAll(unique);
     });
   }
 

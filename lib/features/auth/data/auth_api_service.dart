@@ -101,13 +101,29 @@ class AuthApiService {
   }
 
   /// Fetch farmers for a given route.
+  /// Persists both route and farmers to Hive + Isar so offline access works.
   Future<List<Map<String, dynamic>>> getFarmersByRoute(int routeId) async {
     try {
       final res = await _api.get('/farmers/routes/$routeId/farmers');
       final body = res.data as Map<String, dynamic>;
       if (body['success'] == true) {
-        final data = body['data'] as Map<String, dynamic>;
-        return List<Map<String, dynamic>>.from(data['farmers'] as List);
+        final data    = body['data'] as Map<String, dynamic>;
+        final farmers = List<Map<String, dynamic>>.from(data['farmers'] as List);
+        final route   = data['route'];
+
+        // Persist so offline access + sync engine have what they need
+        final box = Hive.box('auth');
+        if (route != null) await box.put('route', route);
+        await box.put('farmers', farmers);
+
+        if (route != null) {
+          final rid = (route['id'] as num?)?.toInt() ?? 0;
+          if (rid > 0) {
+            await FarmersLocalRepository().saveFromLogin(farmers, rid);
+          }
+        }
+
+        return farmers;
       }
     } catch (_) {}
     return [];
