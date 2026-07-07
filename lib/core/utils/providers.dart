@@ -4,6 +4,7 @@ import 'package:wakulima/core/ble/ble_scale_service.dart';
 import 'package:wakulima/core/sync/sync_engine.dart';
 import 'package:wakulima/features/auth/data/auth_api_service.dart';
 import 'package:wakulima/features/collection/data/repositories/collection_repository.dart';
+import 'package:wakulima/features/esp/data/repositories/esp_repository.dart';
 
 // ─── Core Services ─────────────────────────────────────────────────────────
 
@@ -30,6 +31,10 @@ final syncEngineProvider = Provider<SyncEngine>((ref) {
 
 final collectionRepositoryProvider = Provider<CollectionRepository>((ref) {
   return CollectionRepository(ref.watch(apiClientProvider));
+});
+
+final espRepositoryProvider = Provider<EspRepository>((ref) {
+  return EspRepository(ref.watch(apiClientProvider));
 });
 
 // ─── BLE State ────────────────────────────────────────────────────────────

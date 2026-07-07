@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:wakulima/core/database/farmers_local_repository.dart';
 import 'package:wakulima/core/network/api_client.dart';
+import 'package:wakulima/core/realtime/realtime_notifier.dart';
 
 class AuthApiService {
   final ApiClient _api;
@@ -27,6 +28,7 @@ class AuthApiService {
       final grader = data['grader'] as Map<String, dynamic>;
       final route  = data['route'];
       final farmers = data['farmers'];
+      final espProvider = data['esp_provider'];
 
       final box = Hive.box('auth');
       await box.put('token', token);
@@ -38,6 +40,14 @@ class AuthApiService {
         'name':          grader['name'],
         'roles':         (grader['roles'] as List?)?.join(',') ?? '',
       });
+      // Present only when this login is linked to an ESP (agrovet/service
+      // provider) account — locks the New ESP Sale screen to that provider.
+      if (espProvider != null) {
+        await box.put('esp_provider', Map<String, dynamic>.from(espProvider as Map));
+      } else {
+        await box.delete('esp_provider');
+      }
+      RealtimeNotifier().connect();
       if (route != null) {
         await box.put('route', route);
       }
@@ -78,6 +88,7 @@ class AuthApiService {
     try {
       await _api.post('/grader/logout');
     } catch (_) {}
+    RealtimeNotifier().disconnect();
     await Hive.box('auth').clear();
   }
 

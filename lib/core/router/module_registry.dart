@@ -155,6 +155,15 @@ class ModuleRegistry {
       route: '/quality',
       requiredRoles: ['manager', 'admin'],
     ),
+    AppModule(
+      id: 'esp',
+      title: 'Agrovets & Services',
+      description: 'Invoice farmers, employees and transporters for external agrovet/service-provider purchases',
+      icon: Icons.storefront_outlined,
+      color: WakulimaColors.esp,
+      route: '/esp',
+      requiredRoles: ['agent', 'manager', 'admin'],
+    ),
   ];
 
   static AppModule? findById(String id) =>

@@ -24,6 +24,8 @@ import 'package:wakulima/features/inventory/presentation/screens/inventory_scree
 import 'package:wakulima/features/inventory/presentation/screens/inventory_transfer_screen.dart';
 import 'package:wakulima/features/tracking/presentation/screens/my_movements_screen.dart';
 import 'package:wakulima/features/farmers/presentation/screens/milk_supplier_payslips_screen.dart';
+import 'package:wakulima/features/esp/presentation/screens/esp_history_screen.dart';
+import 'package:wakulima/features/esp/presentation/screens/esp_sale_screen.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -172,6 +174,16 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/reporting/milksupplierpayslips',
       builder: (_, __) => const MilkSupplierPayslipsScreen(),
+    ),
+    GoRoute(
+      path: '/esp',
+      builder: (_, __) => const EspHistoryScreen(),
+    ),
+    GoRoute(
+      path: '/esp/new',
+      builder: (_, state) => EspSaleScreen(
+        editSale: state.extra as Map<String, dynamic>?,
+      ),
     ),
   ],
   errorBuilder: (context, state) => Scaffold(

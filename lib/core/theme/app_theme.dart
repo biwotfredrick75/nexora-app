@@ -50,6 +50,7 @@ class WakulimaColors {
   static const Color salesMgmt      = Color(0xFF9E9E9E); // grey (locked)
   static const Color analytics      = Color(0xFF00695C); // teal dark
   static const Color quality        = Color(0xFF2E7D32); // dark green
+  static const Color esp            = Color(0xFF8D6E63); // brown (agrovet/services)
 }
 
 class WakulimaTheme {
